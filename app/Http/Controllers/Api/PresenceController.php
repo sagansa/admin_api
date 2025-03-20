@@ -27,7 +27,7 @@ class PresenceController extends Controller
             $query->where('store_id', $request->store_id);
         }
 
-        $presences = $query->latest()->paginate(10);
+        $presences = $query->latest()->get();
 
         return response()->json([
             'success' => true,
