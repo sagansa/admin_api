@@ -17,13 +17,34 @@ class DetailSalesOrderResource extends JsonResource
             'quantity' => $this->quantity,
             'price' => $this->price,
             'total' => $this->total,
-            'for' => $this->salesOrder->for,
-            'payment_status' => $this->salesOrder->payment_status,
-            'delivery_status' => $this->salesOrder->delivery_status,
+            'for' => match($this->salesOrder->for) {
+                '1' => 'Direct',
+                '2' => 'Employee',
+                '3' => 'Online',
+                default => 'unknown'
+            },
+            // 'payment_status_code' => $this->salesOrder->payment_status,
+            'payment_status' => match($this->salesOrder->payment_status) {
+                1 => 'belum diperiksa',
+                2 => 'valid',
+                3 => 'perbaiki',
+                4 => 'periksa ulang',
+                default => 'unknown'
+            },
+            // 'delivery_status_code' => $this->salesOrder->delivery_status,
+            'delivery_status' => match($this->salesOrder->delivery_status) {
+                1 => 'belum dikirim',
+                2 => 'valid',
+                3 => 'sudah dikirim',
+                4 => 'siap dikirim',
+                5 => 'perbaiki',
+                6 => 'dikembalikan',
+                default => 'unknown'
+            },
             'store' => $this->salesOrder->store?->nickname ?? 'N/A',
-            'order_by' => $this->salesOrder->order_by,
-            'created_at' => $this->salesOrder->created_at,
-            'updated_at' => $this->salesOrder->updated_at,
+            'order_by' => $this->salesOrder->orderedBy->name,
+            'created_at' => $this->salesOrder->created_at?->format('Y-m-d H:i:s'),
+            'updated_at' => $this->salesOrder->updated_at?->format('Y-m-d H:i:s'),
         ];
     }
 }
