@@ -15,8 +15,8 @@ class DetailSalesOrderResource extends JsonResource
             'sales_order_id' => $this->sales_order_id,
             'delivery_date' => $this->salesOrder->delivery_date,
             'quantity' => $this->quantity,
-            'price' => $this->price,
-            'total' => $this->total,
+            'unit_price' => $this->unit_price,
+            'subtotal_price' => $this->subtotal_price,
             'for' => match($this->salesOrder->for) {
                 '1' => 'Direct',
                 '2' => 'Employee',
