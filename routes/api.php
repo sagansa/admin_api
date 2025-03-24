@@ -4,7 +4,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\PresenceController;
 use App\Http\Controllers\Api\AuthController;
-use App\Http\Controllers\API\DetailSalesOrderController;
+use App\Http\Controllers\Api\DetailSalesOrderController;
 
 // Auth routes
 Route::post('login', [AuthController::class, 'login']);
