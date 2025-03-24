@@ -19,6 +19,8 @@ class PresenceResource extends JsonResource
             'shift_duration' => $this->shiftStore?->duration,
             'check_in' => $this->check_in,
             'check_out' => $this->check_out,
+            'created_at' => $this->created_at,
+            'updated_at' => $this->updated_at,
         ];
     }
 }
