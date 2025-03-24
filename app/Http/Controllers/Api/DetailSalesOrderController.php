@@ -11,7 +11,7 @@ class DetailSalesOrderController extends Controller
 {
     public function index()
     {
-        $detailSalesOrders = DetailSalesOrder::with(['product', 'salesOrder', 'salesOrderOnline', 'salesOrderDirect', 'salesOrderEmployee'])
+        $detailSalesOrders = DetailSalesOrder::with(['product'])
             ->latest()
             ->get();
 
