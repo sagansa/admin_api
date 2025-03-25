@@ -39,6 +39,9 @@ Route::middleware('auth:sanctum')->group(function () {
     // DetailStockCard routes
     Route::get('detail-stock-cards', [DetailStockCardController::class, 'index']);
     Route::post('detail-stock-cards', [DetailStockCardController::class,'store']);
+    Route::get('detail-stock-cards/daily', [DetailStockCardController::class, 'dailyStockCard']);
+    Route::get('detail-stock-cards/monthly', [DetailStockCardController::class, 'monthlyStockCard']);
+    Route::get('detail-stock-cards/yearly', [DetailStockCardController::class, 'yearlyStockCard']);
     Route::get('detail-stock-cards/{detailStockCard}', [DetailStockCardController::class,'show']);
     Route::put('detail-stock-cards/{detailStockCard}', [DetailStockCardController::class, 'update']);
     Route::delete('detail-stock-cards/{detailStockCard}', [DetailStockCardController::class, 'destroy']);
