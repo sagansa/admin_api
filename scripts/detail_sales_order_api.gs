@@ -55,48 +55,63 @@ function getDetailSalesOrders() {
             sheet = ss.insertSheet(SHEET_NAME);
         }
 
-        sheet.clear();
+        // Clear only the API data columns (1-14)
+        const dataRange = sheet.getRange(
+            1,
+            1,
+            sheet.getLastRow(),
+            HEADERS.length
+        );
+        dataRange.clearContent();
+
+        // Set headers for API data columns
         sheet.getRange(1, 1, 1, HEADERS.length).setValues([HEADERS]);
         sheet.getRange(1, 1, 1, HEADERS.length).setFontWeight("bold");
 
-        if (data && data.length > 0) {
+        // Process data only if it exists and has items
+        if (data && Array.isArray(data) && data.length > 0) {
             const spreadsheetData = data.map((item) => [
-                item.id,
-                item.product,
-                item.sales_order_id,
-                item.delivery_date,
-                item.quantity,
-                item.unit_price,
-                item.subtotal_price,
-                item.for,
-                item.payment_status,
-                item.delivery_status,
+                item.id || "",
+                item.product || "",
+                item.sales_order_id || "",
+                item.delivery_date || "",
+                parseFloat(item.quantity) || 0,
+                parseFloat(item.unit_price) || 0,
+                parseFloat(item.subtotal_price) || 0,
+                item.for || "",
+                item.payment_status || "",
+                item.delivery_status || "",
                 item.store || "N/A",
-                item.order_by,
-                item.created_at,
-                item.updated_at,
+                item.order_by || "",
+                item.created_at || "",
+                item.updated_at || "",
             ]);
 
-            sheet
-                .getRange(2, 1, spreadsheetData.length, HEADERS.length)
-                .setValues(spreadsheetData);
-            sheet.autoResizeColumns(1, HEADERS.length);
-
-            // Format date columns only
-            const dateColumns = [4, 13, 14];
-            dateColumns.forEach((col) => {
+            // Only proceed with formatting if we have data to process
+            if (spreadsheetData.length > 0) {
                 sheet
-                    .getRange(2, col, spreadsheetData.length, 1)
-                    .setNumberFormat("yyyy-mm-dd hh:mm:ss");
-            });
+                    .getRange(2, 1, spreadsheetData.length, HEADERS.length)
+                    .setValues(spreadsheetData);
+                sheet.autoResizeColumns(1, HEADERS.length);
 
-            // Remove currency formatting since we're handling it in the data mapping
-            const currencyColumns = [6, 7]; // Unit Price and Subtotal columns
-            currencyColumns.forEach((col) => {
-                sheet
-                    .getRange(2, col, spreadsheetData.length, 1)
-                    .setNumberFormat("#,##0.00");
-            });
+                // Format date columns only if we have data
+                const dateColumns = [4, 13, 14];
+                dateColumns.forEach((col) => {
+                    sheet
+                        .getRange(2, col, spreadsheetData.length, 1)
+                        .setNumberFormat("yyyy-mm-dd hh:mm:ss");
+                });
+
+                // Format price columns as numbers
+                const priceColumns = [6, 7]; // Unit Price and Subtotal columns
+                priceColumns.forEach((col) => {
+                    sheet
+                        .getRange(2, col, spreadsheetData.length, 1)
+                        .setNumberFormat("#,##0.00");
+                });
+            }
+        } else {
+            Logger.log("No data available to update the spreadsheet");
         }
 
         Logger.log("Data successfully updated");

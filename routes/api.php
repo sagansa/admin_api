@@ -5,6 +5,8 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\PresenceController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\DetailSalesOrderController;
+use App\Http\Controllers\Api\DetailStockCardController;
+use App\Http\Controllers\Api\RemainingStorageController;
 
 // Auth routes
 Route::post('login', [AuthController::class, 'login']);
@@ -26,6 +28,19 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('detail-sales-orders/{detailSalesOrder}', [DetailSalesOrderController::class, 'show']);
     Route::get('detail-sales-orders-report', [DetailSalesOrderController::class,'report']);
 
-    // Route::apiResource('detail-sales-orders', DetailSalesOrderController::class);
-    //     Route::get('sales-order/{salesOrderId}/details', [DetailSalesOrderController::class, 'getBySalesOrder']);
+    // RemainingStorage routes
+    Route::get('remaining-storages', [RemainingStorageController::class, 'index']);
+    Route::post('remaining-storages', [RemainingStorageController::class, 'store']);
+    Route::get('remaining-storages/{remainingStorage}', [RemainingStorageController::class, 'show']);
+    Route::put('remaining-storages/{remainingStorage}', [RemainingStorageController::class, 'update']);
+    Route::delete('remaining-storages/{remainingStorage}', [RemainingStorageController::class, 'destroy']);
+    Route::get('remaining-storages-report', [RemainingStorageController::class, 'report']);
+
+    // DetailStockCard routes
+    Route::get('detail-stock-cards', [DetailStockCardController::class, 'index']);
+    Route::post('detail-stock-cards', [DetailStockCardController::class,'store']);
+    Route::get('detail-stock-cards/{detailStockCard}', [DetailStockCardController::class,'show']);
+    Route::put('detail-stock-cards/{detailStockCard}', [DetailStockCardController::class, 'update']);
+    Route::delete('detail-stock-cards/{detailStockCard}', [DetailStockCardController::class, 'destroy']);
+    Route::get('detail-stock-cards-report', [DetailStockCardController::class,'report']);
 });
