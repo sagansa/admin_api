@@ -9,6 +9,33 @@ use Illuminate\Support\Facades\DB;
 
 class RemainingStorageController extends Controller
 {
+    protected function remainingStorageRelations(): array
+    {
+        return [
+            'store:id,nickname,name',
+            'user:id,name',
+            'detailStockCards:id,product_id,quantity,stock_card_id',
+            'detailStockCards.product:id,name,unit_id',
+            'detailStockCards.product.unit:id,unit',
+        ];
+    }
+
+    protected function applyRemainingStorageFilter($query)
+    {
+        return $query->whereRaw(
+            "LOWER(REPLACE(REPLACE(TRIM(`for`), '_', ' '), '-', ' ')) IN (?, ?)",
+            ['remaining storage', 'remaining storages']
+        );
+    }
+
+    protected function isRemainingStorageValue($value): bool
+    {
+        $normalized = strtolower(trim(str_replace(['_', '-'], ' ', (string) $value)));
+        $normalized = preg_replace('/\s+/', ' ', $normalized);
+
+        return in_array($normalized, ['remaining storage', 'remaining storages'], true);
+    }
+
     public function index(Request $request)
     {
         $request->validate([
@@ -20,14 +47,8 @@ class RemainingStorageController extends Controller
         $perPage = (int) ($request->per_page ?? 15);
 
         $query = RemainingStorage::query()
-            ->with([
-                'store:id,nickname,name',
-                'user:id,name,username',
-                'detailStockCards:id,product_id,quantity,stock_card_id',
-                'detailStockCards.product:id,name,unit_id',
-                'detailStockCards.product.unit:id,unit,nickname',
-            ])
-            ->where('for', 'remaining storage')
+            ->with($this->remainingStorageRelations())
+            ->tap(fn ($q) => $this->applyRemainingStorageFilter($q))
             ->when($request->store_id, function ($q) use ($request) {
                 return $q->where('store_id', $request->store_id);
             })
@@ -78,13 +99,7 @@ class RemainingStorageController extends Controller
 
             return response()->json([
                 'message' => 'Remaining storage created successfully',
-                'data' => $remainingStorage->load([
-                    'store:id,nickname,name',
-                    'user:id,name,username',
-                    'detailStockCards:id,product_id,quantity,stock_card_id',
-                    'detailStockCards.product:id,name,unit_id',
-                    'detailStockCards.product.unit:id,unit,nickname',
-                ])
+                'data' => $remainingStorage->load($this->remainingStorageRelations())
             ], 201);
 
         } catch (\Exception $e) {
@@ -95,18 +110,12 @@ class RemainingStorageController extends Controller
 
     public function show(RemainingStorage $remainingStorage)
     {
-        if (strtolower((string) $remainingStorage->for) !== 'remaining storage') {
+        if (! $this->isRemainingStorageValue($remainingStorage->for)) {
             return response()->json(['message' => 'Remaining storage not found'], 404);
         }
 
         return response()->json([
-            'data' => $remainingStorage->load([
-                'store:id,nickname,name',
-                'user:id,name,username',
-                'detailStockCards:id,product_id,quantity,stock_card_id',
-                'detailStockCards.product:id,name,unit_id',
-                'detailStockCards.product.unit:id,unit,nickname',
-            ])
+            'data' => $remainingStorage->load($this->remainingStorageRelations())
         ]);
     }
 
@@ -148,13 +157,7 @@ class RemainingStorageController extends Controller
 
             return response()->json([
                 'message' => 'Remaining storage updated successfully',
-                'data' => $remainingStorage->load([
-                    'store:id,nickname,name',
-                    'user:id,name,username',
-                    'detailStockCards:id,product_id,quantity,stock_card_id',
-                    'detailStockCards.product:id,name,unit_id',
-                    'detailStockCards.product.unit:id,unit,nickname',
-                ])
+                'data' => $remainingStorage->load($this->remainingStorageRelations())
             ]);
 
         } catch (\Exception $e) {
@@ -188,7 +191,7 @@ class RemainingStorageController extends Controller
         ]);
 
         $query = RemainingStorage::with(['store', 'detailStockCards'])
-            ->where('for', 'remaining storage')
+            ->tap(fn ($q) => $this->applyRemainingStorageFilter($q))
             ->whereBetween('date', [$request->start_date, $request->end_date])
             ->when($request->store_id, function ($q) use ($request) {
                 return $q->where('store_id', $request->store_id);
