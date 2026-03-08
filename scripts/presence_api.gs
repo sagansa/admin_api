@@ -1,123 +1,107 @@
-// Configuration
-const API_BASE_URL = "YOUR_API_BASE_URL"; // Replace with your actual API base URL
+function fetchJsonToSheet() {
+    var url = "https://superadmin.sagansa.id/api/presences"; // URL API JSON
+    var token = "1928|DvkiyXPhc5ixN0kx71TU6dai9jxaK0kIqvh5ggyJ81f4bc25"; // Token API (Jika perlu)
 
-// Store authentication token
-let authToken = null;
-
-/**
- * Authenticates with the API using email and password
- */
-function authenticate() {
-    const email = "YOUR_EMAIL"; // Replace with actual email
-    const password = "YOUR_PASSWORD"; // Replace with actual password
-
-    const options = {
-        method: "post",
-        contentType: "application/json",
-        payload: JSON.stringify({
-            email: email,
-            password: password,
-        }),
-    };
-
-    try {
-        const response = UrlFetchApp.fetch(API_BASE_URL + "/login", options);
-        const jsonResponse = JSON.parse(response.getContentText());
-        authToken = jsonResponse.token;
-        return true;
-    } catch (error) {
-        Logger.log("Authentication failed: " + error.toString());
-        return false;
-    }
-}
-
-/**
- * Fetches presence data from the API
- */
-function fetchPresenceData() {
-    if (!authToken) {
-        const isAuthenticated = authenticate();
-        if (!isAuthenticated) {
-            throw new Error("Failed to authenticate");
-        }
-    }
-
-    const options = {
+    var options = {
         method: "get",
         headers: {
-            Authorization: "Bearer " + authToken,
+            Authorization: "Bearer " + token,
+            Accept: "application/json",
         },
     };
 
-    try {
-        const response = UrlFetchApp.fetch(
-            API_BASE_URL + "/presences",
-            options
-        );
-        const jsonResponse = JSON.parse(response.getContentText());
-        return jsonResponse.data;
-    } catch (error) {
-        Logger.log("Failed to fetch presence data: " + error.toString());
-        throw error;
+    var response = UrlFetchApp.fetch(url, options);
+    var json = JSON.parse(response.getContentText());
+
+    if (!json.success || !json.data || json.data.length === 0) {
+        Logger.log("⚠️ Tidak ada data yang ditemukan!");
+        return;
     }
-}
 
-/**
- * Updates the spreadsheet with presence data
- */
-function updateSpreadsheet() {
-    const sheet = SpreadsheetApp.getActiveSheet();
+    var sheet =
+        SpreadsheetApp.getActiveSpreadsheet().getSheetByName("presences");
+    if (!sheet) {
+        Logger.log("⚠️ Sheet 'presences' tidak ditemukan!");
+        return;
+    }
 
-    try {
-        const presenceData = fetchPresenceData();
+    var lastRow = sheet.getLastRow();
+    var headers = [
+        "ID",
+        "Creator",
+        "Store",
+        "Shift Name",
+        "Shift Start",
+        "Shift End",
+        "Shift Duration",
+        "Check In",
+        "Check Out",
+        "created_at",
+        "updated_at",
+        "Last Sync",
+    ];
 
-        // Set headers
-        const headers = [
-            "Creator",
-            "Store",
-            "Shift Name",
-            "Shift Start Time",
-            "Shift End Time",
-            "Shift Duration",
-            "Check In",
-            "Check Out",
-            "Created At",
-            "Updated At",
-        ];
+    // Jika sheet kosong, tambahkan header terlebih dahulu
+    if (lastRow === 0) {
         sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
-
-        // Populate data
-        const data = presenceData.map((presence) => [
-            presence.creator,
-            presence.store,
-            presence.shift_name,
-            presence.shift_start_time,
-            presence.shift_end_time,
-            presence.shift_duration,
-            presence.check_in,
-            presence.check_out,
-            presence.created_at,
-            presence.updated_at,
-        ]);
-
-        if (data.length > 0) {
-            sheet.getRange(2, 1, data.length, headers.length).setValues(data);
-        }
-
-        // Format the sheet
-        sheet.autoResizeColumns(1, headers.length);
-    } catch (error) {
-        Logger.log("Failed to update spreadsheet: " + error.toString());
-        throw error;
+        lastRow = 1;
     }
-}
 
-/**
- * Creates a menu item to refresh data
- */
-function onOpen() {
-    const ui = SpreadsheetApp.getUi();
-    ui.createMenu("Presence API")
-        .addItem("Refresh Data", "updateSpreadsheet")
-        .addToUi();
+    var existingData =
+        lastRow > 1
+            ? sheet.getRange(2, 1, lastRow - 1, headers.length).getValues()
+            : [];
+    var existingIds = {}; // Menyimpan ID, updated_at, dan last_sync untuk membandingkan perubahan
+
+    existingData.forEach((row) => {
+        existingIds[row[0]] = {
+            updated_at: row[10],
+            last_sync: row[11],
+        };
+    });
+
+    var newValues = [];
+
+    json.data.forEach((row) => {
+        var id = row.id;
+        var updatedAt = row.updated_at;
+        var createdAt = row.created_at;
+
+        // Jika ID belum ada atau data lebih baru dari last sync, tambahkan/overwrite data
+        if (
+            !existingIds[id] ||
+            !existingIds[id].last_sync ||
+            new Date(updatedAt) > new Date(existingIds[id].last_sync) ||
+            new Date(createdAt) > new Date(existingIds[id].last_sync)
+        ) {
+            newValues.push([
+                row.id,
+                row.creator,
+                row.store,
+                row.shift_name,
+                row.shift_start_time,
+                row.shift_end_time,
+                row.shift_duration,
+                row.check_in,
+                row.check_out,
+                row.created_at,
+                row.updated_at,
+                new Date().toISOString(),
+            ]);
+        }
+    });
+
+    // **🛠 FIX: Cek apakah newValues memiliki data sebelum setValues()**
+    if (newValues.length > 0) {
+        sheet
+            .getRange(lastRow + 1, 1, newValues.length, headers.length)
+            .setValues(newValues);
+        Logger.log(
+            "✅ " +
+                newValues.length +
+                " data baru diperbarui/dimasukkan ke sheet 'presences'!"
+        );
+    } else {
+        Logger.log("ℹ️ Tidak ada data baru yang perlu disinkronkan.");
+    }
 }

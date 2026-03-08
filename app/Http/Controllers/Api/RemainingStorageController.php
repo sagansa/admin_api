@@ -11,16 +11,34 @@ class RemainingStorageController extends Controller
 {
     public function index(Request $request)
     {
-        $query = RemainingStorage::with(['store', 'user', 'detailStockCards'])
+        $request->validate([
+            'store_id' => 'nullable|exists:stores,id',
+            'date' => 'nullable|date',
+            'per_page' => 'nullable|integer|min:1|max:200',
+        ]);
+
+        $perPage = (int) ($request->per_page ?? 15);
+
+        $query = RemainingStorage::query()
+            ->with([
+                'store:id,nickname,name',
+                'user:id,name,username',
+                'detailStockCards:id,product_id,quantity,stock_card_id',
+                'detailStockCards.product:id,name,unit_id',
+                'detailStockCards.product.unit:id,unit,nickname',
+            ])
+            ->where('for', 'remaining storage')
             ->when($request->store_id, function ($q) use ($request) {
                 return $q->where('store_id', $request->store_id);
             })
             ->when($request->date, function ($q) use ($request) {
-                return $q->whereDate('created_at', $request->date);
-            });
+                return $q->whereDate('date', $request->date);
+            })
+            ->orderByDesc('date')
+            ->orderByDesc('id');
 
         return response()->json([
-            'data' => $query->paginate($request->per_page ?? 15)
+            'data' => $query->paginate($perPage)
         ]);
     }
 
@@ -41,6 +59,7 @@ class RemainingStorageController extends Controller
             DB::beginTransaction();
 
             $remainingStorage = RemainingStorage::create([
+                'for' => 'remaining storage',
                 'store_id' => $request->store_id,
                 'user_id' => $request->user_id,
                 'date' => $request->date,
@@ -59,7 +78,13 @@ class RemainingStorageController extends Controller
 
             return response()->json([
                 'message' => 'Remaining storage created successfully',
-                'data' => $remainingStorage->load(['store', 'user', 'detailStockCards'])
+                'data' => $remainingStorage->load([
+                    'store:id,nickname,name',
+                    'user:id,name,username',
+                    'detailStockCards:id,product_id,quantity,stock_card_id',
+                    'detailStockCards.product:id,name,unit_id',
+                    'detailStockCards.product.unit:id,unit,nickname',
+                ])
             ], 201);
 
         } catch (\Exception $e) {
@@ -70,8 +95,18 @@ class RemainingStorageController extends Controller
 
     public function show(RemainingStorage $remainingStorage)
     {
+        if (strtolower((string) $remainingStorage->for) !== 'remaining storage') {
+            return response()->json(['message' => 'Remaining storage not found'], 404);
+        }
+
         return response()->json([
-            'data' => $remainingStorage->load(['store', 'user', 'detailStockCards'])
+            'data' => $remainingStorage->load([
+                'store:id,nickname,name',
+                'user:id,name,username',
+                'detailStockCards:id,product_id,quantity,stock_card_id',
+                'detailStockCards.product:id,name,unit_id',
+                'detailStockCards.product.unit:id,unit,nickname',
+            ])
         ]);
     }
 
@@ -113,7 +148,13 @@ class RemainingStorageController extends Controller
 
             return response()->json([
                 'message' => 'Remaining storage updated successfully',
-                'data' => $remainingStorage->load(['store', 'user', 'detailStockCards'])
+                'data' => $remainingStorage->load([
+                    'store:id,nickname,name',
+                    'user:id,name,username',
+                    'detailStockCards:id,product_id,quantity,stock_card_id',
+                    'detailStockCards.product:id,name,unit_id',
+                    'detailStockCards.product.unit:id,unit,nickname',
+                ])
             ]);
 
         } catch (\Exception $e) {
@@ -147,6 +188,7 @@ class RemainingStorageController extends Controller
         ]);
 
         $query = RemainingStorage::with(['store', 'detailStockCards'])
+            ->where('for', 'remaining storage')
             ->whereBetween('date', [$request->start_date, $request->end_date])
             ->when($request->store_id, function ($q) use ($request) {
                 return $q->where('store_id', $request->store_id);
@@ -155,7 +197,7 @@ class RemainingStorageController extends Controller
         $report = $query->get()->map(function ($item) {
             return [
                 'id' => $item->id,
-                'store_name' => $item->store->name,
+                'store_name' => $item->store->nickname ?? $item->store->name ?? null,
                 'date' => $item->date,
                 'total_products' => $item->detailStockCards->count(),
                 'total_quantity' => $item->detailStockCards->sum('quantity')
