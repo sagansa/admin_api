@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Http\Resources\SimplifiedStockMonitoringResource;
 use App\Models\StockMonitoring;
 use App\Models\Store;
 use Illuminate\Http\Request;
@@ -307,18 +306,35 @@ class StockMonitoringController extends Controller
             'category' => ['nullable', Rule::in(['storage', 'store'])],
         ]);
 
+        $selectedDate = $request->filled('date') ? $request->date : now()->toDateString();
+        $coefficientColumn = $this->detailCoefficientColumn();
+
         $query = StockMonitoring::query()
-            ->with(['stockMonitoringDetails'])
-            ->when($request->filled('date'), function ($q) use ($request) {
-                return $q->whereDate('created_at', $request->date);
-            })
             ->when($request->filled('category'), function ($q) use ($request) {
                 return $q->where('category', $request->category);
             })
-            ->orderBy('created_at', 'desc')
             ->orderBy('name');
 
-        return SimplifiedStockMonitoringResource::collection($query->get());
+        $monitorings = $query->get();
+
+        $result = $monitorings->map(function ($monitoring) use ($selectedDate, $coefficientColumn) {
+            $totalStock = DB::table('stock_monitoring_details')
+                ->join('product_storage_stock', 'stock_monitoring_details.product_id', '=', 'product_storage_stock.product_id')
+                ->join('storage_stocks', 'product_storage_stock.storage_stock_id', '=', 'storage_stocks.id')
+                ->where('stock_monitoring_details.stock_monitoring_id', $monitoring->id)
+                ->whereDate('storage_stocks.date', $selectedDate)
+                ->selectRaw("SUM(product_storage_stock.quantity * stock_monitoring_details.{$coefficientColumn}) as total")
+                ->value('total') ?? 0;
+
+            return [
+                'date' => $selectedDate,
+                'name' => $monitoring->name,
+                'total_stock' => (float) $totalStock,
+                'quantity_low' => $monitoring->quantity_low,
+            ];
+        });
+
+        return response()->json($result);
     }
 
     public function storesNotReported(Request $request)
@@ -331,7 +347,7 @@ class StockMonitoringController extends Controller
             ->whereDoesntHave('storageStocks', function ($query) use ($request) {
                 $query->whereDate('date', $request->date);
             })
-            ->orderBy('name')
+            ->orderBy('nickname')
             ->pluck('nickname');
 
         return response()->json([
