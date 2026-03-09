@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\DetailSalesOrderController;
 use App\Http\Controllers\Api\DetailStockCardController;
 use App\Http\Controllers\Api\RemainingStorageController;
+use App\Http\Controllers\Api\StockMonitoringController;
 
 // Auth routes
 Route::post('login', [AuthController::class, 'login']);
@@ -46,4 +47,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('detail-stock-cards/{detailStockCard}', [DetailStockCardController::class, 'update']);
     Route::delete('detail-stock-cards/{detailStockCard}', [DetailStockCardController::class, 'destroy']);
     Route::get('detail-stock-cards-report', [DetailStockCardController::class,'report']);
+
+    // StockMonitoring routes
+    Route::get('stock-monitorings', [StockMonitoringController::class, 'index']);
+    Route::post('stock-monitorings', [StockMonitoringController::class, 'store']);
+    Route::get('stock-monitorings/{stockMonitoring}', [StockMonitoringController::class, 'show']);
+    Route::put('stock-monitorings/{stockMonitoring}', [StockMonitoringController::class, 'update']);
+    Route::delete('stock-monitorings/{stockMonitoring}', [StockMonitoringController::class, 'destroy']);
+    Route::get('stock-monitorings-report', [StockMonitoringController::class, 'report']);
 });
