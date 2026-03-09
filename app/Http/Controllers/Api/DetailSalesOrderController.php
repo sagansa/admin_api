@@ -27,9 +27,8 @@ class DetailSalesOrderController extends Controller
             'sales_order_id' => 'required|exists:sales_orders,id',
             'product_id' => 'required|exists:products,id',
             'quantity' => 'required|numeric|min:1',
-            'price' => 'required|numeric|min:0',
-            'subtotal' => 'required|numeric|min:0',
-            'discount' => 'nullable|numeric|min:0',
+            'unit_price' => 'required|numeric|min:0',
+            'subtotal_price' => 'required|numeric|min:0',
         ]);
 
         $detail = DetailSalesOrder::create($validated);
@@ -57,9 +56,8 @@ class DetailSalesOrderController extends Controller
         $validated = $request->validate([
             'product_id' => 'sometimes|required|exists:products,id',
             'quantity' => 'sometimes|required|numeric|min:1',
-            'price' => 'sometimes|required|numeric|min:0',
-            'subtotal' => 'sometimes|required|numeric|min:0',
-            'discount' => 'nullable|numeric|min:0',
+            'unit_price' => 'sometimes|required|numeric|min:0',
+            'subtotal_price' => 'sometimes|required|numeric|min:0',
         ]);
 
         $detailSalesOrder->update($validated);

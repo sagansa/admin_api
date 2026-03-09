@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\SimplifiedStockMonitoringResource;
 use App\Models\StockMonitoring;
+use App\Models\Store;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -295,6 +297,45 @@ class StockMonitoringController extends Controller
 
         return response()->json([
             'data' => $report,
+        ]);
+    }
+
+    public function simplified(Request $request)
+    {
+        $request->validate([
+            'date' => 'nullable|date',
+            'category' => ['nullable', Rule::in(['storage', 'store'])],
+        ]);
+
+        $query = StockMonitoring::query()
+            ->with(['stockMonitoringDetails'])
+            ->when($request->filled('date'), function ($q) use ($request) {
+                return $q->whereDate('created_at', $request->date);
+            })
+            ->when($request->filled('category'), function ($q) use ($request) {
+                return $q->where('category', $request->category);
+            })
+            ->orderBy('created_at', 'desc')
+            ->orderBy('name');
+
+        return SimplifiedStockMonitoringResource::collection($query->get());
+    }
+
+    public function storesNotReported(Request $request)
+    {
+        $request->validate([
+            'date' => 'required|date',
+        ]);
+
+        $storesNotReported = Store::query()
+            ->whereDoesntHave('storageStocks', function ($query) use ($request) {
+                $query->whereDate('date', $request->date);
+            })
+            ->orderBy('name')
+            ->pluck('nickname');
+
+        return response()->json([
+            'data' => $storesNotReported,
         ]);
     }
 }

@@ -42,7 +42,7 @@ class DetailSalesOrderResource extends JsonResource
                 default => 'unknown'
             },
             'store' => $this->salesOrder->store?->nickname ?? 'N/A',
-            'order_by' => $this->salesOrder->orderedBy->name,
+            'order_by' => $this->salesOrder->orderedBy?->name ?? 'N/A',
             'created_at' => $this->salesOrder->created_at?->format('Y-m-d H:i:s'),
             'updated_at' => $this->salesOrder->updated_at?->format('Y-m-d H:i:s'),
         ];

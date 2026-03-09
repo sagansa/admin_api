@@ -27,6 +27,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('detail-sales-orders', [DetailSalesOrderController::class, 'index']);
     Route::post('detail-sales-orders', [DetailSalesOrderController::class, 'store']);
     Route::get('detail-sales-orders/{detailSalesOrder}', [DetailSalesOrderController::class, 'show']);
+    Route::put('detail-sales-orders/{detailSalesOrder}', [DetailSalesOrderController::class, 'update']);
+    Route::delete('detail-sales-orders/{detailSalesOrder}', [DetailSalesOrderController::class, 'destroy']);
+    Route::get('detail-sales-orders/by-sales-order/{salesOrderId}', [DetailSalesOrderController::class, 'getBySalesOrder']);
     Route::get('detail-sales-orders-report', [DetailSalesOrderController::class,'report']);
 
     // RemainingStorage routes
@@ -55,4 +58,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('stock-monitorings/{stockMonitoring}', [StockMonitoringController::class, 'update']);
     Route::delete('stock-monitorings/{stockMonitoring}', [StockMonitoringController::class, 'destroy']);
     Route::get('stock-monitorings-report', [StockMonitoringController::class, 'report']);
+    Route::get('stock-monitorings-simplified', [StockMonitoringController::class, 'simplified']);
+    Route::get('stores-not-reported', [StockMonitoringController::class, 'storesNotReported']);
 });
