@@ -10,29 +10,25 @@ class DetailSalesOrderResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            'id' => $this->id,
-            'product' => $this->product->name,
-            'sales_order_id' => $this->sales_order_id,
-            'delivery_date' => $this->salesOrder->delivery_date,
+            'product' => $this->product?->name ?? 'N/A',
+            'delivery_date' => $this->salesOrder?->delivery_date,
             'quantity' => $this->quantity,
-            'unit_price' => (string) $this->unit_price,
-            'subtotal_price' => (string) $this->subtotal_price,
-            'for' => match($this->salesOrder->for) {
+            'unit_price' => (float) $this->unit_price,
+            'subtotal_price' => (float) $this->subtotal_price,
+            'for' => match($this->salesOrder?->for) {
                 '1' => 'Direct',
                 '2' => 'Employee',
                 '3' => 'Online',
                 default => 'unknown'
             },
-            // 'payment_status_code' => $this->salesOrder->payment_status,
-            'payment_status' => match($this->salesOrder->payment_status) {
+            'payment_status' => match($this->salesOrder?->payment_status) {
                 1 => 'belum diperiksa',
                 2 => 'valid',
                 3 => 'perbaiki',
                 4 => 'periksa ulang',
                 default => 'unknown'
             },
-            // 'delivery_status_code' => $this->salesOrder->delivery_status,
-            'delivery_status' => match($this->salesOrder->delivery_status) {
+            'delivery_status' => match($this->salesOrder?->delivery_status) {
                 1 => 'belum dikirim',
                 2 => 'valid',
                 3 => 'sudah dikirim',
@@ -41,10 +37,31 @@ class DetailSalesOrderResource extends JsonResource
                 6 => 'dikembalikan',
                 default => 'unknown'
             },
-            'store' => $this->salesOrder->store?->nickname ?? 'N/A',
-            'order_by' => $this->salesOrder->orderedBy?->name ?? 'N/A',
-            'created_at' => $this->salesOrder->created_at?->format('Y-m-d H:i:s'),
-            'updated_at' => $this->salesOrder->updated_at?->format('Y-m-d H:i:s'),
+            'status' => $this->getStatusAttribute(),
         ];
+    }
+
+    private function getStatusAttribute(): string
+    {
+        $paymentStatus = $this->salesOrder?->payment_status;
+        $deliveryStatus = $this->salesOrder?->delivery_status;
+
+        if ($paymentStatus === 2 && $deliveryStatus === 3) {
+            return 'completed';
+        }
+
+        if ($paymentStatus === 2 && in_array($deliveryStatus, [4, 5])) {
+            return 'processing';
+        }
+
+        if (in_array($paymentStatus, [3, 4])) {
+            return 'payment_issue';
+        }
+
+        if ($deliveryStatus === 6) {
+            return 'returned';
+        }
+
+        return 'pending';
     }
 }
