@@ -25,6 +25,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // DetailSalesOrder routes
     Route::get('detail-sales-orders', [DetailSalesOrderController::class, 'index']);
+    Route::get('detail-sales-orders/daily-product-status', [DetailSalesOrderController::class, 'dailyProductStatus']);
     Route::post('detail-sales-orders', [DetailSalesOrderController::class, 'store']);
     Route::get('detail-sales-orders/{detailSalesOrder}', [DetailSalesOrderController::class, 'show']);
     Route::put('detail-sales-orders/{detailSalesOrder}', [DetailSalesOrderController::class, 'update']);
