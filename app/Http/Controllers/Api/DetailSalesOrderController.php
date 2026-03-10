@@ -165,8 +165,6 @@ class DetailSalesOrderController extends Controller
 
         return 'pending';
     }
-        ]);
-    }
 
     public function update(Request $request, DetailSalesOrder $detailSalesOrder)
     {
@@ -207,5 +205,94 @@ class DetailSalesOrderController extends Controller
             'success' => true,
             'data' => $details
         ]);
+    }
+
+    /**
+     * Get sales data by date with quantity and total price for each product
+     */
+    public function salesByDate(Request $request)
+    {
+        $request->validate([
+            'date' => 'required|date',
+            'for' => 'nullable|in:1,2,3,Direct,Employee,Online',
+        ]);
+
+        $selectedDate = $request->date;
+
+        // Determine the correct coefficient column name
+        $coefficientColumn = $this->getCoefficientColumn();
+
+        $query = DetailSalesOrder::query()
+            ->select([
+                'stock_monitorings.name as stock_monitoring_name',
+                'products.name as product_name',
+                DB::raw('SUM(detail_sales_orders.quantity * stock_monitoring_details.' . $coefficientColumn . ') as total_quantity'),
+                DB::raw('SUM(detail_sales_orders.subtotal_price * stock_monitoring_details.' . $coefficientColumn . ') as total_price'),
+            ])
+            ->join('sales_orders', 'detail_sales_orders.sales_order_id', '=', 'sales_orders.id')
+            ->leftJoin('stock_monitoring_details', 'detail_sales_orders.product_id', '=', 'stock_monitoring_details.product_id')
+            ->leftJoin('stock_monitorings', 'stock_monitoring_details.stock_monitoring_id', '=', 'stock_monitorings.id')
+            ->join('products', 'detail_sales_orders.product_id', '=', 'products.id')
+            ->whereDate('sales_orders.delivery_date', $selectedDate)
+            ->groupBy('stock_monitorings.name', 'products.name');
+
+        // Filter by sales order type if provided
+        if ($request->filled('for')) {
+            $forValue = $request->for;
+            $forMap = [
+                'Direct' => '1',
+                'Employee' => '2',
+                'Online' => '3'
+            ];
+            $forValue = $forMap[$forValue] ?? $forValue;
+            $query->where('sales_orders.for', $forValue);
+        }
+
+        $sales = $query->get()
+            ->map(function ($item) {
+                $quantity = (int) $item->total_quantity;
+                $totalPrice = (float) $item->total_price;
+                
+                return [
+                    'stock_monitoring_name' => $item->stock_monitoring_name ?? $item->product_name ?? 'N/A',
+                    'quantity' => $quantity,
+                    'unit_price' => $quantity > 0 ? $totalPrice / $quantity : 0,
+                    'total_price' => $totalPrice,
+                ];
+            });
+
+        return response()->json([
+            'success' => true,
+            'data' => $sales,
+            'summary' => [
+                'date' => $selectedDate,
+                'total_products' => $sales->count(),
+                'total_quantity' => $sales->sum('quantity'),
+                'total_revenue' => $sales->sum('total_price'),
+            ]
+        ]);
+    }
+
+    /**
+     * Get the coefficient column name from stock_monitoring_details
+     */
+    private function getCoefficientColumn(): string
+    {
+        $columns = ['coefficient', 'coefisien', 'koefisien'];
+        
+        try {
+            $schema = DB::getDoctrineSchemaManager();
+            $columnsFound = array_map(fn($c) => $c['Field'], $schema->listTableColumns('stock_monitoring_details'));
+            
+            foreach ($columns as $column) {
+                if (in_array($column, $columnsFound)) {
+                    return $column;
+                }
+            }
+        } catch (\Exception $e) {
+            // Fallback to default
+        }
+        
+        return 'coefficient';
     }
 }

@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\DetailSalesOrderController;
 use App\Http\Controllers\Api\DetailStockCardController;
 use App\Http\Controllers\Api\RemainingStorageController;
 use App\Http\Controllers\Api\StockMonitoringController;
+use App\Http\Controllers\Api\ProductPriceController;
 
 // Auth routes
 Route::post('login', [AuthController::class, 'login']);
@@ -26,6 +27,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // DetailSalesOrder routes
     Route::get('detail-sales-orders', [DetailSalesOrderController::class, 'index']);
     Route::get('detail-sales-orders/daily-product-status', [DetailSalesOrderController::class, 'dailyProductStatus']);
+    Route::get('detail-sales-orders/sales-by-date', [DetailSalesOrderController::class, 'salesByDate']);
     Route::post('detail-sales-orders', [DetailSalesOrderController::class, 'store']);
     Route::get('detail-sales-orders/{detailSalesOrder}', [DetailSalesOrderController::class, 'show']);
     Route::put('detail-sales-orders/{detailSalesOrder}', [DetailSalesOrderController::class, 'update']);
@@ -61,4 +63,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('stock-monitorings-report', [StockMonitoringController::class, 'report']);
     Route::get('stock-monitorings-simplified', [StockMonitoringController::class, 'simplified']);
     Route::get('stores-not-reported', [StockMonitoringController::class, 'storesNotReported']);
+
+    // ProductPrice routes
+    Route::get('product-prices', [ProductPriceController::class, 'index']);
+    Route::get('product-prices/by-product/{productId}', [ProductPriceController::class, 'byProduct']);
+    Route::get('product-prices/by-store/{storeId}', [ProductPriceController::class, 'byStore']);
+    Route::get('product-prices-report', [ProductPriceController::class, 'report']);
+    Route::post('product-prices', [ProductPriceController::class, 'store']);
+    Route::get('product-prices/{productPrice}', [ProductPriceController::class, 'show']);
+    Route::put('product-prices/{productPrice}', [ProductPriceController::class, 'update']);
+    Route::delete('product-prices/{productPrice}', [ProductPriceController::class, 'destroy']);
 });
