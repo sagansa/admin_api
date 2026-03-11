@@ -226,7 +226,6 @@ class DetailSalesOrderController extends Controller
         $query = DB::table('stock_monitorings')
             ->select([
                 'stock_monitorings.name as stock_monitoring_name',
-                'products.name as product_name',
                 DB::raw('SUM(detail_sales_orders.quantity * stock_monitoring_details.' . $coefficientColumn . ') as total_quantity'),
                 DB::raw('SUM(detail_sales_orders.subtotal_price * stock_monitoring_details.' . $coefficientColumn . ') as total_price'),
                 DB::raw('AVG(detail_sales_orders.unit_price) as avg_unit_price'),
@@ -238,7 +237,7 @@ class DetailSalesOrderController extends Controller
             ->join('detail_sales_orders', 'detail_sales_orders.product_id', '=', 'products.id')
             ->join('sales_orders', 'detail_sales_orders.sales_order_id', '=', 'sales_orders.id')
             ->whereDate('sales_orders.delivery_date', $selectedDate)
-            ->groupBy('stock_monitorings.name', 'products.name', 'sales_orders.delivery_status', 'sales_orders.payment_status');
+            ->groupBy('stock_monitorings.name', 'sales_orders.delivery_status', 'sales_orders.payment_status');
 
         // Filter by sales order type if provided
         if ($request->filled('for')) {
@@ -258,8 +257,7 @@ class DetailSalesOrderController extends Controller
                 $totalPrice = (float) $item->total_price;
 
                 return [
-                    'stock_monitoring_name' => $item->stock_monitoring_name ?? $item->product_name ?? 'N/A',
-                    'product_name' => $item->product_name ?? 'N/A',
+                    'stock_monitoring_name' => $item->stock_monitoring_name ?? 'N/A',
                     'quantity' => $quantity,
                     'unit_price' => (float) $item->avg_unit_price,
                     'total_price' => $totalPrice,
