@@ -230,13 +230,15 @@ class DetailSalesOrderController extends Controller
                 DB::raw('SUM(detail_sales_orders.quantity * stock_monitoring_details.' . $coefficientColumn . ') as total_quantity'),
                 DB::raw('SUM(detail_sales_orders.subtotal_price * stock_monitoring_details.' . $coefficientColumn . ') as total_price'),
                 DB::raw('AVG(detail_sales_orders.unit_price) as avg_unit_price'),
+                'sales_orders.delivery_status',
+                'sales_orders.payment_status',
             ])
             ->join('stock_monitoring_details', 'stock_monitoring_details.stock_monitoring_id', '=', 'stock_monitorings.id')
             ->join('products', 'stock_monitoring_details.product_id', '=', 'products.id')
             ->join('detail_sales_orders', 'detail_sales_orders.product_id', '=', 'products.id')
             ->join('sales_orders', 'detail_sales_orders.sales_order_id', '=', 'sales_orders.id')
             ->whereDate('sales_orders.delivery_date', $selectedDate)
-            ->groupBy('stock_monitorings.name', 'products.name');
+            ->groupBy('stock_monitorings.name', 'products.name', 'sales_orders.delivery_status', 'sales_orders.payment_status');
 
         // Filter by sales order type if provided
         if ($request->filled('for')) {
@@ -261,6 +263,22 @@ class DetailSalesOrderController extends Controller
                     'quantity' => $quantity,
                     'unit_price' => (float) $item->avg_unit_price,
                     'total_price' => $totalPrice,
+                    'delivery_status' => match($item->delivery_status) {
+                        '1' => 'belum dikirim',
+                        '2' => 'valid',
+                        '3' => 'sudah dikirim',
+                        '4' => 'siap dikirim',
+                        '5' => 'perbaiki',
+                        '6' => 'dikembalikan',
+                        default => 'unknown'
+                    },
+                    'payment_status' => match($item->payment_status) {
+                        '1' => 'belum diperiksa',
+                        '2' => 'valid',
+                        '3' => 'perbaiki',
+                        '4' => 'periksa ulang',
+                        default => 'unknown'
+                    },
                 ];
             });
 
