@@ -216,10 +216,122 @@ class DetailSalesOrderController extends Controller
     }
 
     /**
-     * Get sales data by date range with quantity and total price for each product
-     * Starting from StockMonitoring and joining with DetailSalesOrder
+     * Get detail sales orders by date with coefficient applied
+     * Returns individual sales order line items with quantity × coefficient
      */
     public function salesByDate(Request $request)
+    {
+        $request->validate([
+            'date' => 'required|date',
+            'for' => 'nullable|in:1,2,3,Direct,Employee,Online',
+        ]);
+
+        $selectedDate = $request->date;
+
+        // Determine the correct coefficient column name
+        $coefficientColumn = $this->getCoefficientColumn();
+
+        // Build base query
+        $query = DB::table('detail_sales_orders')
+            ->join('sales_orders', 'detail_sales_orders.sales_order_id', '=', 'sales_orders.id')
+            ->join('products', 'detail_sales_orders.product_id', '=', 'products.id')
+            ->join('stock_monitoring_details', 'stock_monitoring_details.product_id', '=', 'detail_sales_orders.product_id')
+            ->join('stock_monitorings', 'stock_monitoring_details.stock_monitoring_id', '=', 'stock_monitorings.id')
+            ->leftJoin('stores', 'sales_orders.store_id', '=', 'stores.id')
+            ->whereDate('sales_orders.delivery_date', $selectedDate)
+            ->select(
+                'detail_sales_orders.id as detail_sales_order_id',
+                'sales_orders.id as sales_order_id',
+                'stock_monitorings.id as stock_monitoring_id',
+                'stock_monitorings.name as stock_monitoring_name',
+                'products.id as product_id',
+                'products.name as product_name',
+                'detail_sales_orders.quantity as raw_quantity',
+                'detail_sales_orders.unit_price',
+                'detail_sales_orders.subtotal_price',
+                'stock_monitoring_details.' . $coefficientColumn . ' as coefficient',
+                DB::raw('detail_sales_orders.quantity * stock_monitoring_details.' . $coefficientColumn . ' as quantity'),
+                DB::raw('detail_sales_orders.subtotal_price * stock_monitoring_details.' . $coefficientColumn . ' as total_price'),
+                'sales_orders.for as sales_type',
+                'sales_orders.delivery_date',
+                'sales_orders.payment_status',
+                'sales_orders.delivery_status',
+                'stores.nickname as store_name'
+            );
+
+        // Filter by sales order type if provided
+        if ($request->filled('for')) {
+            $forValue = $request->for;
+            $forMap = [
+                'Direct' => '1',
+                'Employee' => '2',
+                'Online' => '3'
+            ];
+            $forValue = $forMap[$forValue] ?? $forValue;
+            $query->where('sales_orders.for', $forValue);
+        }
+
+        $sales = $query->orderBy('sales_orders.id')->orderBy('detail_sales_orders.id')->get()
+            ->map(function ($item) {
+                return [
+                    'detail_sales_order_id' => (int) $item->detail_sales_order_id,
+                    'sales_order_id' => (int) $item->sales_order_id,
+                    'stock_monitoring_id' => (int) $item->stock_monitoring_id,
+                    'stock_monitoring_name' => $item->stock_monitoring_name,
+                    'product_id' => (int) $item->product_id,
+                    'product_name' => $item->product_name,
+                    'quantity' => (int) $item->quantity,
+                    'raw_quantity' => (int) $item->raw_quantity,
+                    'coefficient' => (int) $item->coefficient,
+                    'calculation' => $item->raw_quantity . ' × ' . $item->coefficient . ' = ' . $item->quantity,
+                    'unit_price' => (float) $item->unit_price,
+                    'total_price' => (float) $item->total_price,
+                    'sales_type' => match((int) $item->sales_type) {
+                        1 => 'Direct',
+                        2 => 'Employee',
+                        3 => 'Online',
+                        default => 'Unknown'
+                    },
+                    'delivery_date' => $item->delivery_date,
+                    'store_name' => $item->store_name ?? 'N/A',
+                    'payment_status' => match((int) $item->payment_status) {
+                        1 => 'belum diperiksa',
+                        2 => 'valid',
+                        3 => 'perbaiki',
+                        4 => 'periksa ulang',
+                        default => 'unknown'
+                    },
+                    'delivery_status' => match((int) $item->delivery_status) {
+                        1 => 'belum dikirim',
+                        2 => 'valid',
+                        3 => 'sudah dikirim',
+                        4 => 'siap dikirim',
+                        5 => 'perbaiki',
+                        6 => 'dikembalikan',
+                        default => 'unknown'
+                    },
+                ];
+            });
+
+        return response()->json([
+            'success' => true,
+            'data' => $sales,
+            'summary' => [
+                'date' => $selectedDate,
+                'total_items' => $sales->count(),
+                'total_quantity' => $sales->sum('quantity'),
+                'total_raw_quantity' => $sales->sum('raw_quantity'),
+                'total_value' => $sales->sum('total_price'),
+            ]
+        ]);
+    }
+
+    /**
+     * Get sales data by date range with quantity and total price for each product
+     * Starting from StockMonitoring and joining with DetailSalesOrder
+     * @deprecated Use salesByDate with single date parameter instead
+     */
+    public function salesByDateRange(Request $request)
     {
         $request->validate([
             'from_date' => 'required|date',
