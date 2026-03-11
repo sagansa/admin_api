@@ -60,6 +60,9 @@ class DetailSalesOrderController extends Controller
 
         $selectedDate = $request->date;
 
+        // Determine the correct coefficient column name
+        $coefficientColumn = $this->getCoefficientColumn();
+
         $query = DetailSalesOrder::query()
             ->select([
                 'detail_sales_orders.id',
@@ -71,9 +74,11 @@ class DetailSalesOrderController extends Controller
                 'sales_orders.for',
                 'sales_orders.store_id',
                 'sales_orders.delivery_date',
+                DB::raw('COALESCE(stock_monitoring_details.' . $coefficientColumn . ', 1) as coefficient'),
             ])
             ->join('sales_orders', 'detail_sales_orders.sales_order_id', '=', 'sales_orders.id')
             ->join('products', 'detail_sales_orders.product_id', '=', 'products.id')
+            ->leftJoin('stock_monitoring_details', 'stock_monitoring_details.product_id', '=', 'detail_sales_orders.product_id')
             ->leftJoin('stores', 'sales_orders.store_id', '=', 'stores.id')
             ->with(['product:id,name', 'salesOrder:id,for,store_id,delivery_date,payment_status,delivery_status'])
             ->whereDate('sales_orders.delivery_date', $selectedDate);
@@ -84,6 +89,7 @@ class DetailSalesOrderController extends Controller
         }
 
         $sales = $query->get()->map(function ($item) {
+            $coefficient = (float) ($item->coefficient ?? 1);
             return [
                 'id' => $item->id,
                 'product_id' => $item->product_id,
@@ -97,7 +103,9 @@ class DetailSalesOrderController extends Controller
                     '3' => 'Online',
                     default => 'unknown'
                 },
-                'quantity' => (int) $item->quantity,
+                'quantity' => (int) ($item->quantity * $coefficient),
+                'raw_quantity' => (int) $item->quantity,
+                'coefficient' => $coefficient,
                 'unit_price' => (float) $item->unit_price,
                 'total_price' => (float) $item->subtotal_price,
                 'payment_status' => match($item->salesOrder?->payment_status) {

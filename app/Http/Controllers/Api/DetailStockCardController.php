@@ -104,7 +104,7 @@ class DetailStockCardController extends Controller
      * Compare Sales Orders vs Stock Cards between two dates
      * Both starting from Stock Monitoring
      * Stock Period: from_date (start) to to_date (end)
-     * Sales Period: from_date to to_date
+     * Sales: only from to_date
      */
     public function compareStockPeriods(Request $request)
     {
@@ -119,23 +119,29 @@ class DetailStockCardController extends Controller
         // Determine the correct coefficient column name
         $coefficientColumn = $this->getCoefficientColumn();
 
-        // 1. Get Sales Orders data (Stock Monitoring → Detail Sales Orders)
+        // 1. Get Sales Orders data - only from to_date
+        // First aggregate sales by product_id, then join with stock_monitoring_details to apply coefficient
+        $salesByProduct = DB::table('detail_sales_orders')
+            ->join('sales_orders', 'detail_sales_orders.sales_order_id', '=', 'sales_orders.id')
+            ->whereDate('sales_orders.delivery_date', $toDate)
+            ->select(
+                'detail_sales_orders.product_id',
+                DB::raw('SUM(detail_sales_orders.quantity) as total_quantity'),
+                DB::raw('SUM(detail_sales_orders.subtotal_price) as total_value')
+            )
+            ->groupBy('detail_sales_orders.product_id');
+
         $salesQuery = DB::table('stock_monitorings')
-            ->select([
-                'stock_monitorings.id as stock_monitoring_id',
-                'stock_monitorings.name as stock_monitoring_name',
-                DB::raw('COALESCE(SUM(detail_sales_orders.quantity * stock_monitoring_details.' . $coefficientColumn . '), 0) as total_sales_quantity'),
-                DB::raw('COALESCE(SUM(detail_sales_orders.subtotal_price * stock_monitoring_details.' . $coefficientColumn . '), 0) as total_sales_value'),
-            ])
             ->join('stock_monitoring_details', 'stock_monitoring_details.stock_monitoring_id', '=', 'stock_monitorings.id')
-            ->join('products', 'stock_monitoring_details.product_id', '=', 'products.id')
-            ->leftJoin('detail_sales_orders', function ($join) use ($fromDate, $toDate) {
-                $join->on('detail_sales_orders.product_id', '=', 'products.id');
+            ->leftJoinSub($salesByProduct, 'sales_by_product', function ($join) {
+                $join->on('stock_monitoring_details.product_id', '=', 'sales_by_product.product_id');
             })
-            ->leftJoin('sales_orders', function ($join) use ($fromDate, $toDate) {
-                $join->on('detail_sales_orders.sales_order_id', '=', 'sales_orders.id')
-                    ->whereBetween('sales_orders.delivery_date', [$fromDate, $toDate]);
-            })
+            ->selectRaw('
+                stock_monitorings.id as stock_monitoring_id,
+                stock_monitorings.name as stock_monitoring_name,
+                COALESCE(SUM(sales_by_product.total_quantity * stock_monitoring_details.' . $coefficientColumn . '), 0) as total_sales_quantity,
+                COALESCE(SUM(sales_by_product.total_value), 0) as total_sales_value
+            ')
             ->groupBy('stock_monitorings.id', 'stock_monitorings.name');
 
         $salesData = $salesQuery->get()->keyBy('stock_monitoring_id');
