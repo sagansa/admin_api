@@ -208,17 +208,19 @@ class DetailSalesOrderController extends Controller
     }
 
     /**
-     * Get sales data by date with quantity and total price for each product
+     * Get sales data by date range with quantity and total price for each product
      * Starting from StockMonitoring and joining with DetailSalesOrder
      */
     public function salesByDate(Request $request)
     {
         $request->validate([
-            'date' => 'required|date',
+            'from_date' => 'required|date',
+            'to_date' => 'required|date|after_or_equal:from_date',
             'for' => 'nullable|in:1,2,3,Direct,Employee,Online',
         ]);
 
-        $selectedDate = $request->date;
+        $fromDate = $request->from_date;
+        $toDate = $request->to_date;
 
         // Determine the correct coefficient column name
         $coefficientColumn = $this->getCoefficientColumn();
@@ -236,7 +238,7 @@ class DetailSalesOrderController extends Controller
             ->join('products', 'stock_monitoring_details.product_id', '=', 'products.id')
             ->join('detail_sales_orders', 'detail_sales_orders.product_id', '=', 'products.id')
             ->join('sales_orders', 'detail_sales_orders.sales_order_id', '=', 'sales_orders.id')
-            ->whereDate('sales_orders.delivery_date', $selectedDate)
+            ->whereBetween('sales_orders.delivery_date', [$fromDate, $toDate])
             ->groupBy('stock_monitorings.name', 'sales_orders.delivery_status', 'sales_orders.payment_status');
 
         // Filter by sales order type if provided
@@ -284,7 +286,8 @@ class DetailSalesOrderController extends Controller
             'success' => true,
             'data' => $sales,
             'summary' => [
-                'date' => $selectedDate,
+                'from_date' => $fromDate,
+                'to_date' => $toDate,
                 'total_products' => $sales->count(),
                 'total_quantity' => $sales->sum('quantity'),
                 'total_revenue' => $sales->sum('total_price'),
