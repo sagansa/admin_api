@@ -209,6 +209,7 @@ class DetailSalesOrderController extends Controller
 
     /**
      * Get sales data by date with quantity and total price for each product
+     * Starting from StockMonitoring and joining with DetailSalesOrder
      */
     public function salesByDate(Request $request)
     {
@@ -222,17 +223,18 @@ class DetailSalesOrderController extends Controller
         // Determine the correct coefficient column name
         $coefficientColumn = $this->getCoefficientColumn();
 
-        $query = DetailSalesOrder::query()
+        $query = DB::table('stock_monitorings')
             ->select([
                 'stock_monitorings.name as stock_monitoring_name',
                 'products.name as product_name',
                 DB::raw('SUM(detail_sales_orders.quantity * stock_monitoring_details.' . $coefficientColumn . ') as total_quantity'),
                 DB::raw('SUM(detail_sales_orders.subtotal_price * stock_monitoring_details.' . $coefficientColumn . ') as total_price'),
+                DB::raw('AVG(detail_sales_orders.unit_price) as avg_unit_price'),
             ])
+            ->join('stock_monitoring_details', 'stock_monitoring_details.stock_monitoring_id', '=', 'stock_monitorings.id')
+            ->join('products', 'stock_monitoring_details.product_id', '=', 'products.id')
+            ->join('detail_sales_orders', 'detail_sales_orders.product_id', '=', 'products.id')
             ->join('sales_orders', 'detail_sales_orders.sales_order_id', '=', 'sales_orders.id')
-            ->leftJoin('stock_monitoring_details', 'detail_sales_orders.product_id', '=', 'stock_monitoring_details.product_id')
-            ->leftJoin('stock_monitorings', 'stock_monitoring_details.stock_monitoring_id', '=', 'stock_monitorings.id')
-            ->join('products', 'detail_sales_orders.product_id', '=', 'products.id')
             ->whereDate('sales_orders.delivery_date', $selectedDate)
             ->groupBy('stock_monitorings.name', 'products.name');
 
@@ -252,11 +254,12 @@ class DetailSalesOrderController extends Controller
             ->map(function ($item) {
                 $quantity = (int) $item->total_quantity;
                 $totalPrice = (float) $item->total_price;
-                
+
                 return [
                     'stock_monitoring_name' => $item->stock_monitoring_name ?? $item->product_name ?? 'N/A',
+                    'product_name' => $item->product_name ?? 'N/A',
                     'quantity' => $quantity,
-                    'unit_price' => $quantity > 0 ? $totalPrice / $quantity : 0,
+                    'unit_price' => (float) $item->avg_unit_price,
                     'total_price' => $totalPrice,
                 ];
             });
