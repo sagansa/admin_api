@@ -263,20 +263,20 @@ class DetailSalesOrderController extends Controller
                     'quantity' => $quantity,
                     'unit_price' => (float) $item->avg_unit_price,
                     'total_price' => $totalPrice,
-                    'delivery_status' => match($item->delivery_status) {
-                        '1' => 'belum dikirim',
-                        '2' => 'valid',
-                        '3' => 'sudah dikirim',
-                        '4' => 'siap dikirim',
-                        '5' => 'perbaiki',
-                        '6' => 'dikembalikan',
+                    'delivery_status' => match((int) $item->delivery_status) {
+                        1 => 'belum dikirim',
+                        2 => 'valid',
+                        3 => 'sudah dikirim',
+                        4 => 'siap dikirim',
+                        5 => 'perbaiki',
+                        6 => 'dikembalikan',
                         default => 'unknown'
                     },
-                    'payment_status' => match($item->payment_status) {
-                        '1' => 'belum diperiksa',
-                        '2' => 'valid',
-                        '3' => 'perbaiki',
-                        '4' => 'periksa ulang',
+                    'payment_status' => match((int) $item->payment_status) {
+                        1 => 'belum diperiksa',
+                        2 => 'valid',
+                        3 => 'perbaiki',
+                        4 => 'periksa ulang',
                         default => 'unknown'
                     },
                 ];
