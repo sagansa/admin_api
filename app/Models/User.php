@@ -14,6 +14,10 @@ use Carbon\Carbon;
 
 class User extends Authenticatable
 {
+    // Auth terpusat: users + personal_access_tokens hidup di DB sagansa_user,
+    // diken bersama panel apps/admin (koneksi mysql_auth di config/database.php).
+    protected $connection = 'mysql_auth';
+
     use HasFactory;
     use Notifiable;
     use SoftDeletes;
