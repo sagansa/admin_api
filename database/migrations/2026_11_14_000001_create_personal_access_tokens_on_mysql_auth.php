@@ -1,34 +1,24 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 
-// Tabel token Sanctum hidup di DB auth terpusat (mysql_auth → sagansa_user),
-// diken bersama panel apps/admin. Tabelnya kemungkinan sudah dibuat oleh
-// aplikasi lain — migrasi ini hanya membuat bila belum ada (idempotent).
+// STUB NO-OP — skema personal_access_tokens di mysql_auth (sagansa_user)
+// dimiliki oleh project migration terpusat:
+//   sagansa/services/migration/database/migrations/auth/
+//     - 2024_01_01_000000_initial_auth_tables.php
+//     - 2026_05_20_021000_ensure_auth_personal_access_tokens_table_exists.php
+// Ketentuan desain: semua migration ada di services/migration, tidak di aplikasi.
+// File ini sengaja dibuat no-op supaya aman bila ter-deploy, dan HARUS DIHAPUS
+// sebelum commit.
 return new class extends Migration
 {
     public function up(): void
     {
-        if (Schema::connection('mysql_auth')->hasTable('personal_access_tokens')) {
-            return;
-        }
-
-        Schema::connection('mysql_auth')->create('personal_access_tokens', function (Blueprint $table) {
-            $table->id();
-            $table->morphs('tokenable');
-            $table->string('name');
-            $table->string('token', 64)->unique();
-            $table->text('abilities')->nullable();
-            $table->timestamp('last_used_at')->nullable();
-            $table->timestamp('expires_at')->nullable();
-            $table->timestamps();
-        });
+        // no-op — lihat komentar di atas
     }
 
     public function down(): void
     {
-        // Jangan drop: tabel dipakai bersama aplikasi lain (panel apps/admin).
+        // no-op — lihat komentar di atas
     }
 };
